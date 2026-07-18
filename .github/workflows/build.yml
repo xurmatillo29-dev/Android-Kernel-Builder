@@ -32,14 +32,17 @@ jobs:
             fi
           fi
 
-      - name: Fix Xiaomi Touchscreen Makefile Error
+      - name: Remove Broken Xiaomi Touchscreen Driver
         run: |
           cd kernel
-          TOUCH_MAKEFILE="drivers/input/touchscreen/focaltech_3680/Makefile"
-          if [ -f "$TOUCH_MAKEFILE" ]; then
-            # Kirli drayver xatosini to'liq tuzatish
-            sed -i 's/^clean_drivers:/clean_drivers:\n\t/g' $TOUCH_MAKEFILE
-            echo "Touchscreen Makefile xatoligi muvaffaqiyatli tuzatildi!"
+          # Muammoli drayver papkasini butunlay o'chirib tashlaymiz
+          rm -rf drivers/input/touchscreen/focaltech_3680
+          
+          # Uni chaqiruvchi asosiy Makefile ichidagi qatorni ham o'chiramiz
+          MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
+          if [ -f "$MAIN_MAKEFILE" ]; then
+            sed -i '/focaltech_3680/d' $MAIN_MAKEFILE
+            echo "Buzuq drayver tizimdan muvaffaqiyatli olib tashlandi!"
           fi
 
       - name: Set up Clang and Toolchain
@@ -51,7 +54,7 @@ jobs:
         run: |
           cd kernel
           
-          # 1-bosqich: Dastlab manba kodini tozalaymiz (Sensor drayveri tuzatilgandan so'ng)
+          # 1-bosqich: Dastlab manba kodini tozalaymiz
           make ARCH=arm64 mrproper
           
           # 2-bosqich: Asosiy GKI bazasini yaratamiz
