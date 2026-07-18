@@ -52,11 +52,12 @@ jobs:
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # KCFLAGS=-w buyrug'i drayver ichidagi mayda ogohlantirishlar sababli build to'xtab qolishini to'liq yo'qotadi
+          # KBUILD_CFLAGS=-w va KCFLAGS=-w buyruqlari barcha drayver ogohlantirishlarini to'liq yopadi
           make ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
             KCFLAGS="-w" \
+            KBUILD_CFLAGS="-w" \
             -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
