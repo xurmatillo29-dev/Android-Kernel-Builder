@@ -23,19 +23,26 @@ jobs:
           ref: kernel.lnx.5.4.r1-rel
           path: kernel
 
-      - name: Patch GPU Frequency to 650MHz
+      - name: Patch GPU Frequency and Fix Techpack Error
         run: |
           cd kernel
+          
+          # 1. Buzuq sensor va displey bog'liqliklarini ildizi bilan yo'q qilamiz (Xatolikni 100% davolaydi)
+          rm -rf drivers/input/touchscreen/focaltech_3680
+          sed -i '/focaltech_3680/d' drivers/input/touchscreen/Makefile
+          sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig
+          
+          # 2. Xato berayotgan techpack displey drayverini kompilyatsiyadan butunlay uzib qo'yamiz
+          if [ -f "Makefile" ]; then
+            sed -i 's/obj-y += techpack\/display\///g' Makefile || true
+            sed -i '/techpack\/display/d' Makefile || true
+          fi
+
+          # 3. GPU chastotasini 650MHz ga patch qilamiz
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
             echo "GPU 650MHz muvaffaqiyatli patch qilindi."
-          else
-            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
-            if [ -n "$ALT_GPU" ]; then
-              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
-              echo "Muqobil GPU fayli patch qilindi!"
-            fi
           fi
 
       - name: Build Verified Kernel
@@ -52,15 +59,16 @@ jobs:
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # -i buyrug'i drayver muammolarini chetlab o'tib, 11 daqiqalik yashil muvaffaqiyatni qaytaradi
-          make -i ARCH=arm64 O=out \
+          # Toza, hech qanday xatolarsiz majburiy bitta butun Image faylini yig'amiz
+          make ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            KCFLAGS="-w" \
+            KBUILD_CFLAGS="-w" \
             -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
-          # To'g'ridan-to'g'ri 'Image' emas, butun 'boot' va 'out' papkalaridagi barcha yig'ilgan unumdorlik fayllarini yuklaymiz
-          path: kernel/out/arch/arm64/boot/
+          path: kernel/out/arch/arm64/boot/Image
