@@ -10,11 +10,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Clang and LLVM Toolchain
+      - name: Set up Toolchain and Dependencies
         run: |
           sudo apt-get update
-          # Kompilyatsiya uchun barcha zaruriy paketlarni to'liq yuklaymiz
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex git
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git libssl-dev lz4
+
+      - name: Download Google AOSP Clang
+        run: |
+          # Android kerneellarini xatosiz yig'ish uchun rasmiy Google kompilyatorini yuklaymiz
+          mkdir -p clang
+          curl -L https://googlesource.com | tar -xz -C clang
+          echo "$(pwd)/clang/bin" >> $GITHUB_PATH
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -43,25 +49,27 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini aniqlash va generatsiya qilish
+          # Google Clang vositalarining aniq manzilini belgilaymiz
+          CLANG_PREFIX=$(pwd)/../clang/bin/
+          
+          # Konfiguratsiya faylini generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- CROSS_COMPILE_COMPAT=${CLANG_PREFIX}arm-linux-androidkernel- LLVM=1 vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- CROSS_COMPILE_COMPAT=${CLANG_PREFIX}arm-linux-androidkernel- LLVM=1 vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out LLVM=1 gki_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- CROSS_COMPILE_COMPAT=${CLANG_PREFIX}arm-linux-androidkernel- LLVM=1 gki_defconfig
           fi
           
-          # Muvaffaqiyatli yakunlash: Har bir LLVM asbobi o'z nomi bilan aniq ulab berildi
-          # Bu usul 'llvm-objdump: not found' xatosini vdso ichida ham butunlay yo'qotadi
+          # Haqiqiy Google AOSP Clang vositalari yordamida kompilyatsiya qilish
           make ARCH=arm64 O=out \
-            CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
+            CC=${CLANG_PREFIX}clang \
+            LD=${CLANG_PREFIX}ld.lld \
+            AR=${CLANG_PREFIX}llvm-ar \
+            NM=${CLANG_PREFIX}llvm-nm \
+            OBJCOPY=${CLANG_PREFIX}llvm-objcopy \
+            OBJDUMP=${CLANG_PREFIX}llvm-objdump \
+            STRIP=${CLANG_PREFIX}llvm-strip \
             LLVM=1 \
             LLVM_IAS=1 \
             -j$(nproc)
