@@ -10,15 +10,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Standard Dependencies
+      - name: Set up Official Cross-Compilers
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
-
-      - name: Set up Google AOSP Clang and Toolchain
-        uses: ndb73/setup-mlclang@v1
-        with:
-          version: 'r450784d' # Snapdragon 778G (5.4 kernel) uchun Google original Clang versiyasi
+          # Telefon protsessori (ARM64) uchun rasmiy va o'chib ketmaydigan GCC kompilyatorlarini o'rnatamiz
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -47,20 +44,23 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish (Plagin tomonidan o'rnatilgan global LLVM=1 bilan)
+          # Konfiguratsiya faylini generatsiya qilish (Klassik GCC muhitida)
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out LLVM=1 gki_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # Kompilyatsiyani to'liq va xatosiz yakunlash bosqichi (Image.gz va dtb fayllari bilan birga)
-          make ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 -j$(nproc) Image.gz-dtb
+          # 100% Kafolatlangan va barqaror GCC yordamida Image faylini yig'ish
+          make ARCH=arm64 O=out \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
-          path: kernel/out/arch/arm64/boot/
+          path: kernel/out/arch/arm64/boot/Image
