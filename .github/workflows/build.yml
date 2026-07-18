@@ -25,7 +25,6 @@ jobs:
       - name: Patch GPU Frequency to 650MHz
         run: |
           cd kernel
-          # Barqaror Snapdragon 778G GPU dtsi faylini topib patch qilamiz
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
@@ -43,14 +42,17 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # AtomX repozitoriyasidagi sm7325/taoyao umumiy defconfig faylini ishga tushiramiz
+          # AtomX omboridagi Xiaomi 12 Lite / Snapdragon 778G uchun eng to'g'ri defconfig faylini ishga tushiramiz
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out vendor/taoyao_defconfig
+          elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
+            make ARCH=arm64 O=out vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out vendor/gki_defconfig
+            # Boshida 'vendor/' so'zisiz toza gki_defconfig yuklanadi (Hozirgi xatoni yo'qotadi)
+            make ARCH=arm64 O=out gki_defconfig
           fi
           
-          # Kompilyatsiya qilish (Hech qanday kirlanish xatolarisiz toza out ichida yig'iladi)
+          # Kompilyatsiya qilish (Toza out ichida xatosiz boshlanadi)
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
