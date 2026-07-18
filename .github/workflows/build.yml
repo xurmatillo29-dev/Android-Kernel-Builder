@@ -35,9 +35,9 @@ jobs:
       - name: Fix Xiaomi Touchscreen Makefile Error
         run: |
           cd kernel
-          # Xiaomi yo'l qo'ygan missing separator xatosini avtomatik tuzatish
           TOUCH_MAKEFILE="drivers/input/touchscreen/focaltech_3680/Makefile"
           if [ -f "$TOUCH_MAKEFILE" ]; then
+            # Kirli drayver xatosini to'liq tuzatish
             sed -i 's/^clean_drivers:/clean_drivers:\n\t/g' $TOUCH_MAKEFILE
             echo "Touchscreen Makefile xatoligi muvaffaqiyatli tuzatildi!"
           fi
@@ -51,15 +51,18 @@ jobs:
         run: |
           cd kernel
           
-          # 1-bosqich: Dastlab asosiy GKI bazasini yaratamiz
+          # 1-bosqich: Dastlab manba kodini tozalaymiz (Sensor drayveri tuzatilgandan so'ng)
+          make ARCH=arm64 mrproper
+          
+          # 2-bosqich: Asosiy GKI bazasini yaratamiz
           make ARCH=arm64 O=out gki_defconfig
           
-          # 2-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
+          # 3-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
           if [ -f "arch/arm64/configs/vendor/taoyao_QGKI.config" ]; then
             ARCH=arm64 O=out ./scripts/kconfig/merge_config.sh out/.config arch/arm64/configs/vendor/taoyao_QGKI.config
           fi
           
-          # 3-bosqich: Yadro tasvirini kompilyatsiya qilish
+          # 4-bosqich: Yadro tasvirini to'liq kompilyatsiya qilish
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
