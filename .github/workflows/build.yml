@@ -10,9 +10,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Clone Kernel Source
+      - name: Download Kernel Source
         run: |
-          git clone https://github.com --depth=1 --single-branch -b lineage-21 kernel
+          # Git clone muammolarini chetlab o'tish uchun tar formatida tezkor yuklab olish
+          mkdir kernel
+          curl -L https://github.com | tar -xz -C kernel --strip-components=1
 
       - name: Patch GPU Frequency to 650MHz
         run: |
@@ -20,20 +22,23 @@ jobs:
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
-            echo "GPU 650MHz muvaffaqiyatli o'rnatildi."
+            echo "GPU 650MHz patchi muvaffaqiyatli bajarildi."
           else
             echo "GPU dtsi fayli topilmadi!"
           fi
 
-      - name: Set up Clang and Build
+      - name: Set up Clang and Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex
+
+      - name: Build Kernel Image
+        run: |
           cd kernel
           make ARCH=arm64 O=out taoyao_defconfig
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 -j$(nproc)
 
-      - name: Upload Kernel Image
+      - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
