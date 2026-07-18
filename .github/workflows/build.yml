@@ -12,7 +12,7 @@ jobs:
 
       - name: Clone Kernel Source
         run: |
-          git clone https://github.com --depth=1 -b lineage-21 kernel
+          git clone https://github.com --depth=1 --single-branch -b lineage-21 kernel
 
       - name: Patch GPU Frequency to 650MHz
         run: |
