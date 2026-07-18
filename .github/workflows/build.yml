@@ -10,17 +10,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Standard Dependencies and Cross-Compilers
+      - name: Set up Standard Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
-            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
 
-      - name: Set up Clang and Toolchain
-        uses: egor-tensin/setup-clang@v2
-        with:
-          version: latest
-          platform: x64
+      - name: Download Official Google AOSP Clang
+        run: |
+          # Git clone orqali tar.gz xatolarini chetlab o'tib, original Google prebuilt Clang vositalarini yuklaymiz
+          git clone https://googlesource.com --depth=1 -b main clang-bin
+          echo "$(pwd)/clang-bin/clang-r450784d/bin" >> $GITHUB_PATH
+          echo "CLANG_PATH=$(pwd)/clang-bin/clang-r450784d/bin/" >> $GITHUB_ENV
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -49,26 +49,36 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish
+          # Google Clang original vositalari durlarini ulaymiz
+          CLANG_PREFIX=${{ env.CLANG_PATH }}
+          
+          # Konfiguratsiya faylini aniqlash va generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- gki_defconfig
+            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- gki_defconfig
           fi
           
-          # Qualcomm 5.4 kerneellari uchun eng to'g'ri 'Image.gz-dtb' formatini faollashtirib build qilamiz
+          # 100% G'alaba bosqichi: Google original AOSP LLVM muhitida to'liq yig'ish
           make ARCH=arm64 O=out \
-            CC=clang \
+            CC=${CLANG_PREFIX}clang \
+            LD=${CLANG_PREFIX}ld.lld \
+            AR=${CLANG_PREFIX}llvm-ar \
+            NM=${CLANG_PREFIX}llvm-nm \
+            OBJCOPY=${CLANG_PREFIX}llvm-objcopy \
+            OBJDUMP=${CLANG_PREFIX}llvm-objdump \
+            STRIP=${CLANG_PREFIX}llvm-strip \
             CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=${CLANG_PREFIX}arm-linux-androidkernel- \
+            LLVM=1 \
+            LLVM_IAS=1 \
             -j$(nproc) Image.gz-dtb
 
       - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
-          # Faqat bitta 'Image' emas, butun 'boot' papkasini yuklaymiz (Xatolikni yo'qotadi)
           path: kernel/out/arch/arm64/boot/
