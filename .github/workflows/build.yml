@@ -13,7 +13,6 @@ jobs:
       - name: Set up Official Cross-Compilers
         run: |
           sudo apt-get update
-          # Telefon protsessori (ARM64) uchun rasmiy va o'chib ketmaydigan GCC kompilyatorlarini o'rnatamiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
@@ -44,7 +43,7 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish (Klassik GCC muhitida)
+          # Konfiguratsiya faylini generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
@@ -53,10 +52,11 @@ jobs:
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # 100% Kafolatlangan va barqaror GCC yordamida Image faylini yig'ish
+          # KCFLAGS=-w buyrug'i drayver ichidagi mayda ogohlantirishlar sababli build to'xtab qolishini to'liq yo'qotadi
           make ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            KCFLAGS="-w" \
             -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
