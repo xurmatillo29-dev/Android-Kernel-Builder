@@ -18,7 +18,7 @@ jobs:
       - name: Download Clean LineageOS Source
         uses: actions/checkout@v4
         with:
-          repository: LineageOS/android_kernel_xiaomi_sm7325
+          repository: Murnovi/android_kernel_xiaomi_sm7325
           ref: lineage-21
           path: kernel
 
@@ -30,7 +30,11 @@ jobs:
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
             echo "GPU 650MHz muvaffaqiyatli patch qilindi."
           else
-            echo "Ogohlantirish: GPU dtsi topilmadi!"
+            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
+            if [ -n "$ALT_GPU" ]; then
+              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
+              echo "Muqobil GPU fayli patch qilindi!"
+            fi
           fi
 
       - name: Build LineageOS Kernel
@@ -38,10 +42,14 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # LineageOS 21 dagi taoyao uchun rasmiy va xatosiz defconfig faylini ishga tushiramiz
-          make ARCH=arm64 O=out vendor/taoyao_defconfig
+          # Yangi barqaror repozitoriyadagi taoyao defconfig faylini ishga tushiramiz
+          if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
+            make ARCH=arm64 O=out vendor/taoyao_defconfig
+          else
+            make ARCH=arm64 O=out taoyao_defconfig
+          fi
           
-          # Kompilyatsiya qilish (Hech qanday kirlanish xatolarisiz toza out ichida yig'iladi)
+          # Kompilyatsiya qilish
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
