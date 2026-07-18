@@ -15,12 +15,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
 
-      - name: Download Official Google AOSP Clang
-        run: |
-          # Git clone orqali tar.gz xatolarini chetlab o'tib, original Google prebuilt Clang vositalarini yuklaymiz
-          git clone https://googlesource.com --depth=1 -b main clang-bin
-          echo "$(pwd)/clang-bin/clang-r450784d/bin" >> $GITHUB_PATH
-          echo "CLANG_PATH=$(pwd)/clang-bin/clang-r450784d/bin/" >> $GITHUB_ENV
+      - name: Set up Google AOSP Clang and Toolchain
+        uses: ndb73/setup-mlclang@v1
+        with:
+          version: 'r450784d' # Snapdragon 778G (5.4 kernel) uchun Google original Clang versiyasi
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -49,33 +47,17 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Google Clang original vositalari durlarini ulaymiz
-          CLANG_PREFIX=${{ env.CLANG_PATH }}
-          
-          # Konfiguratsiya faylini aniqlash va generatsiya qilish
+          # Konfiguratsiya faylini generatsiya qilish (Plagin tomonidan o'rnatilgan global LLVM=1 bilan)
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- vendor/taoyao_defconfig
+            make ARCH=arm64 O=out LLVM=1 vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- vendor/sm7325_defconfig
+            make ARCH=arm64 O=out LLVM=1 vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out CC=${CLANG_PREFIX}clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- gki_defconfig
+            make ARCH=arm64 O=out LLVM=1 gki_defconfig
           fi
           
-          # 100% G'alaba bosqichi: Google original AOSP LLVM muhitida to'liq yig'ish
-          make ARCH=arm64 O=out \
-            CC=${CLANG_PREFIX}clang \
-            LD=${CLANG_PREFIX}ld.lld \
-            AR=${CLANG_PREFIX}llvm-ar \
-            NM=${CLANG_PREFIX}llvm-nm \
-            OBJCOPY=${CLANG_PREFIX}llvm-objcopy \
-            OBJDUMP=${CLANG_PREFIX}llvm-objdump \
-            STRIP=${CLANG_PREFIX}llvm-strip \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=${CLANG_PREFIX}aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=${CLANG_PREFIX}arm-linux-androidkernel- \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            -j$(nproc) Image.gz-dtb
+          # Kompilyatsiyani to'liq va xatosiz yakunlash bosqichi (Image.gz va dtb fayllari bilan birga)
+          make ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 -j$(nproc) Image.gz-dtb
 
       - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
