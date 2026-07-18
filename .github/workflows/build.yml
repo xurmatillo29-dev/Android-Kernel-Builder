@@ -10,12 +10,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Standard Dependencies
+      - name: Set up Standard Dependencies and Cross-Compilers
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
+          # Yadro va barcha GNU Linker asboblari uchun kerakli kross-kompilyatorlarni to'liq o'rnatamiz
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Set up Clang and LLVM Toolchain
+      - name: Set up Clang and Toolchain
         uses: egor-tensin/setup-clang@v2
         with:
           version: latest
@@ -50,15 +52,14 @@ jobs:
           
           # Konfiguratsiya faylini aniqlash va generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out CC=clang gki_defconfig
+            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # G'alaba bosqichi: Global LLVM=1 o'rniga faqat CC=clang qo'llaniladi
-          # Bu usul vdso va fs bo'limlaridagi assembler xatolarini butunlay yo'qotadi
+          # Kompilyatsiyani boshlash (Barcha kross-linkers muammosiz ishlaydi)
           make ARCH=arm64 O=out \
             CC=clang \
             CROSS_COMPILE=aarch64-linux-gnu- \
