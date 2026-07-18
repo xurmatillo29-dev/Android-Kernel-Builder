@@ -13,11 +13,10 @@ jobs:
       - name: Set up Clang and Toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex Git
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex git
 
       - name: Download Clean LineageOS Source
         run: |
-          # Git 128 xatoligini oldini olish uchun bufer hajmini oshiramiz va single-branch orqali faqat toza kodni olamiz
           git config --global pack.windowMemory "100m"
           git config --global pack.packSizeLimit "100m"
           git config --global core.bigFileThreshold "50m"
@@ -27,7 +26,6 @@ jobs:
       - name: Patch GPU Frequency to 650MHz
         run: |
           cd kernel
-          # LineageOS kodidagi barqaror GPU dtsi faylini topib patch qilamiz
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
