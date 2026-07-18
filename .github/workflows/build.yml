@@ -10,16 +10,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Toolchain and Dependencies
+      - name: Set up Standard Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
 
-      - name: Setup Google AOSP Clang (Prebuilt)
-        uses: kdrag0n/setup-clang@v1
+      - name: Set up Clang and LLVM Toolchain
+        uses: egor-tensin/setup-clang@v2
         with:
-          uri: https://googlesource.com
-          ref: refs/heads/main/clang-r450784d
+          version: latest
+          platform: x64
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
             make ARCH=arm64 O=out LLVM=1 gki_defconfig
           fi
           
-          # Kompilyatsiyani to'liq yakunlash bosqichi
+          # Kompilyatsiyani to'liq yakunlash bosqichi (Rasmiy LLVM vositalari yordamida)
           make ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
