@@ -32,6 +32,16 @@ jobs:
             fi
           fi
 
+      - name: Fix Xiaomi Touchscreen Makefile Error
+        run: |
+          cd kernel
+          # Xiaomi yo'l qo'ygan missing separator xatosini avtomatik tuzatish
+          TOUCH_MAKEFILE="drivers/input/touchscreen/focaltech_3680/Makefile"
+          if [ -f "$TOUCH_MAKEFILE" ]; then
+            sed -i 's/^clean_drivers:/clean_drivers:\n\t/g' $TOUCH_MAKEFILE
+            echo "Touchscreen Makefile xatoligi muvaffaqiyatli tuzatildi!"
+          fi
+
       - name: Set up Clang and Toolchain
         run: |
           sudo apt-get update
@@ -40,9 +50,6 @@ jobs:
       - name: Find Defconfig and Build
         run: |
           cd kernel
-          
-          # Manba kodini kirlanishdan tozalash (Xatolikni yo'qotadi)
-          make ARCH=arm64 mrproper
           
           # 1-bosqich: Dastlab asosiy GKI bazasini yaratamiz
           make ARCH=arm64 O=out gki_defconfig
