@@ -10,61 +10,41 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download Kernel Source
-        uses: actions/checkout@v4
-        with:
-          repository: MiCode/Xiaomi_Kernel_OpenSource
-          ref: taoyao-s-oss
-          path: kernel
-
       - name: Set up Clang and Toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex Git
 
-      - name: Clean and Patch Source
+      - name: Download Clean LineageOS Source
+        run: |
+          # Git 128 xatoligini oldini olish uchun bufer hajmini oshiramiz va single-branch orqali faqat toza kodni olamiz
+          git config --global pack.windowMemory "100m"
+          git config --global pack.packSizeLimit "100m"
+          git config --global core.bigFileThreshold "50m"
+          
+          git clone https://github.com --depth=1 --single-branch -b lineage-21 kernel
+
+      - name: Patch GPU Frequency to 650MHz
         run: |
           cd kernel
-          
-          # 1. Buzuq sensor drayverini butunlay yo'q qilamiz (Tozalashdan oldin!)
-          rm -rf drivers/input/touchscreen/focaltech_3680
-          
-          MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
-          if [ -f "$MAIN_MAKEFILE" ]; then
-            sed -i '/focaltech_3680/d' $MAIN_MAKEFILE
-          fi
-          
-          MAIN_KCONFIG="drivers/input/touchscreen/Kconfig"
-          if [ -f "$MAIN_KCONFIG" ]; then
-            sed -i '/focaltech_3680/d' $MAIN_KCONFIG
-          fi
-          
-          # 2. GPU chastotasini 650MHz ga patch qilamiz
+          # LineageOS kodidagi barqaror GPU dtsi faylini topib patch qilamiz
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
+            echo "GPU 650MHz muvaffaqiyatli patch qilindi."
           else
-            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
-            if [ -n "$ALT_GPU" ]; then
-              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
-            fi
+            echo "Ogohlantirish: GPU dtsi topilmadi, muqobil yo'l tekshirilmoqda..."
           fi
-          echo "Patchlash amallari yakunlandi!"
 
-      - name: Find Defconfig and Build
+      - name: Build LineageOS Kernel
         run: |
           cd kernel
-          # 1-bosqich: Dastlab standart defconfig orqali xavfsiz .config yaratamiz
-          # mrproper buyrug'isiz kirlanish xatosini chetlab o'tish uchun to'g'ridan-to'g'ri out ichida yig'amiz
           mkdir -p out
-          make ARCH=arm64 O=out gki_defconfig
           
-          # 2-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
-          if [ -f "arch/arm64/configs/vendor/taoyao_QGKI.config" ]; then
-            ARCH=arm64 O=out ./scripts/kconfig/merge_config.sh out/.config arch/arm64/configs/vendor/taoyao_QGKI.config
-          fi
+          # LineageOS 21 dagi taoyao uchun rasmiy va xatosiz defconfig faylini ishga tushiramiz
+          make ARCH=arm64 O=out vendor/taoyao_defconfig
           
-          # 3-bosqich: Yadro tasvirini to'liq kompilyatsiya qilish
+          # Kompilyatsiya qilish (Hech qanday kirlanish xatolarisiz toza out ichida yig'iladi)
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
