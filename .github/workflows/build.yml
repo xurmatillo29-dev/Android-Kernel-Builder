@@ -16,12 +16,11 @@ jobs:
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex git
 
       - name: Download Clean LineageOS Source
-        run: |
-          git config --global pack.windowMemory "100m"
-          git config --global pack.packSizeLimit "100m"
-          git config --global core.bigFileThreshold "50m"
-          
-          git clone https://github.com --depth=1 --single-branch -b lineage-21 kernel
+        uses: actions/checkout@v4
+        with:
+          repository: LineageOS/android_kernel_xiaomi_sm7325
+          ref: lineage-21
+          path: kernel
 
       - name: Patch GPU Frequency to 650MHz
         run: |
@@ -31,7 +30,7 @@ jobs:
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
             echo "GPU 650MHz muvaffaqiyatli patch qilindi."
           else
-            echo "Ogohlantirish: GPU dtsi topilmadi, muqobil yo'l tekshirilmoqda..."
+            echo "Ogohlantirish: GPU dtsi topilmadi!"
           fi
 
       - name: Build LineageOS Kernel
