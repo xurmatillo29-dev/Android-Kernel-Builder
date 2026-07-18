@@ -49,7 +49,7 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini aniqlash va generatsiya qilish
+          # Konfiguratsiya faylini generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
@@ -58,16 +58,17 @@ jobs:
             make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- gki_defconfig
           fi
           
-          # Yakuniy marra buyrug'i: CLANG_TRIPLE ulanishi vdso va yakuniy link xatolarini yo'qotadi
+          # Qualcomm 5.4 kerneellari uchun eng to'g'ri 'Image.gz-dtb' formatini faollashtirib build qilamiz
           make ARCH=arm64 O=out \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            -j$(nproc)
+            -j$(nproc) Image.gz-dtb
 
-      - name: Upload Kernel Image Artifact
+      - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
-          path: kernel/out/arch/arm64/boot/Image
+          # Faqat bitta 'Image' emas, butun 'boot' papkasini yuklaymiz (Xatolikni yo'qotadi)
+          path: kernel/out/arch/arm64/boot/
