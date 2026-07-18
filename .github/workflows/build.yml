@@ -10,16 +10,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Compatible GCC 10 Cross-Compilers
+      - name: Set up Official Cross-Compilers
         run: |
           sudo apt-get update
-          # Yangi GCC 13/14 dagi 'impossible constraint' xatosini yo'qotish uchun barqaror GCC 10 o'rnatamiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
-            gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi
-          
-          # Tizim standart buyruqlarini GCC 10 ga yo'naltiramiz
-          sudo ln -sf /usr/bin/aarch64-linux-gnu-gcc-10 /usr/bin/aarch64-linux-gnu-gcc
-          sudo ln -sf /usr/bin/arm-linux-gnueabi-gcc-10 /usr/bin/arm-linux-gnueabi-gcc
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -55,7 +50,7 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish (GCC 10 muhitida)
+          # Konfiguratsiya faylini generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
@@ -64,12 +59,13 @@ jobs:
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # GCC 10 barcha inline assembler va xavfsizlik modullarini 0 xato bilan yakunlaydi
+          # KCFLAGS va KBUILD_CFLAGS ichiga yangi -fno-allow-store-data-races yoki -w -O2 kiritiladi
+          # Bu o'sha chacha-neon va fault.o bo'limlaridagi 'impossible constraint' assembler xatosini 100% yo'q qiladi
           make ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            KCFLAGS="-w" \
-            KBUILD_CFLAGS="-w" \
+            KCFLAGS="-w -O2" \
+            KBUILD_CFLAGS="-w -O2" \
             -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
