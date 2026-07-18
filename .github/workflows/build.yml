@@ -10,10 +10,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Clang and Toolchain
+      - name: Set up Clang and LLVM Toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex git
+          # Yadro yig'ish uchun zarur bo'lgan barcha Clang va LLVM paketlarini to'liq o'rnatamiz
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex git
+          
+          # llvm-objcopy, llvm-objdump va boshqa vositalarni global tizimga bog'laymiz (Hozirgi xatoni yo'qotadi)
+          sudo ln -sf /usr/bin/llvm-objcopy /usr/bin/objcopy
+          sudo ln -sf /usr/bin/llvm-objdump /usr/bin/objdump
+          sudo ln -sf /usr/bin/llvm-nm /usr/bin/nm
+          sudo ln -sf /usr/bin/llvm-strip /usr/bin/strip
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -42,18 +49,17 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # AtomX omboridagi Xiaomi 12 Lite / Snapdragon 778G uchun eng to'g'ri defconfig faylini ishga tushiramiz
+          # Konfiguratsiya faylini aniqlash va generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
             make ARCH=arm64 O=out vendor/sm7325_defconfig
           else
-            # Boshida 'vendor/' so'zisiz toza gki_defconfig yuklanadi (Hozirgi xatoni yo'qotadi)
             make ARCH=arm64 O=out gki_defconfig
           fi
           
-          # Kompilyatsiya qilish (Toza out ichida xatosiz boshlanadi)
-          make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
+          # Kompilyatsiyani boshlash (LLVM asboblari muammosiz ishlaydi)
+          make ARCH=arm64 O=out CC=clang LD=ld.lld OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump NM=llvm-nm STRIP=llvm-strip LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
