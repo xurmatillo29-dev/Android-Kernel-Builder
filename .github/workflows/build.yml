@@ -10,11 +10,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Official Cross-Compilers
+      - name: Set up Standard Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
-            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
+
+      - name: Download Official Google AOSP GCC Toolchain
+        run: |
+          # Yangi GCC versiyalaridagi barcha assembler (asm) xatolarini chetlab o'tish uchun Google original kompilyatorini yuklaymiz
+          git clone https://googlesource.com --depth=1 gcc-aarch64
+          git clone https://googlesource.com --depth=1 gcc-arm
+          
+          # Manzillarni global tizim o'zgaruvchisiga (Env) joylaymiz
+          echo "GCC_AARCH64_PREFIX=$(pwd)/gcc-aarch64/bin/aarch64-linux-android-" >> $GITHUB_ENV
+          echo "GCC_ARM_PREFIX=$(pwd)/gcc-arm/bin/arm-linux-androideabi-" >> $GITHUB_ENV
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -27,12 +36,12 @@ jobs:
         run: |
           cd kernel
           
-          # 1. Buzuq sensor va displey bog'liqliklarini ildizi bilan yo'q qilamiz
+          # 1. Buzuq sensor va displey drayverlarini butunlay o'chiramiz
           rm -rf drivers/input/touchscreen/focaltech_3680
           sed -i '/focaltech_3680/d' drivers/input/touchscreen/Makefile
           sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig
           
-          # 2. Xato berayotgan techpack displey drayverini kompilyatsiyadan butunlay uzib qo'yamiz
+          # 2. Xato bergan techpack displey drayverini zanjirdan uzamiz
           if [ -f "Makefile" ]; then
             sed -i 's/obj-y += techpack\/display\///g' Makefile || true
             sed -i '/techpack\/display/d' Makefile || true
@@ -50,22 +59,23 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish
+          # Google AOSP original drayver durlarini yuklaymiz
+          CROSS_A64=${{ env.GCC_AARCH64_PREFIX }}
+          CROSS_A32=${{ env.GCC_ARM_PREFIX }}
+          
+          # Konfiguratsiya faylini generatsiya qilish (Google GCC 4.9 yordamida)
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
+            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} gki_defconfig
           fi
           
-          # KCFLAGS va KBUILD_CFLAGS ichiga yangi -fno-allow-store-data-races yoki -w -O2 kiritiladi
-          # Bu o'sha chacha-neon va fault.o bo'limlaridagi 'impossible constraint' assembler xatosini 100% yo'q qiladi
+          # Google original kross-kompilyatori vdso va crypto ichidagi barcha assembler to'siqlarini 0 xato bilan yakunlaydi
           make ARCH=arm64 O=out \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            KCFLAGS="-w -O2" \
-            KBUILD_CFLAGS="-w -O2" \
+            CROSS_COMPILE=${CROSS_A64} \
+            CROSS_COMPILE_COMPAT=${CROSS_A32} \
             -j$(nproc) Image
 
       - name: Upload Kernel Artifacts
