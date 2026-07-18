@@ -13,8 +13,8 @@ jobs:
       - name: Download Kernel Source
         uses: actions/checkout@v4
         with:
-          repository: LineageOS/android_kernel_xiaomi_sm7325
-          ref: lineage-21
+          repository: MiCode/Xiaomi_Kernel_OpenSource
+          ref: taoyao-s-oss
           path: kernel
 
       - name: Patch GPU Frequency to 650MHz
@@ -25,7 +25,12 @@ jobs:
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
             echo "GPU 650MHz patchi muvaffaqiyatli bajarildi."
           else
-            echo "GPU dtsi fayli topilmadi!"
+            echo "GPU dtsi fayli topilmadi! Boshqa muqobil joy qidirilmoqda..."
+            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
+            if [ -n "$ALT_GPU" ]; then
+              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
+              echo "Muqobil fayl patch qilindi: $ALT_GPU"
+            fi
           fi
 
       - name: Set up Clang and Toolchain
@@ -36,7 +41,6 @@ jobs:
       - name: Find Defconfig and Build
         run: |
           cd kernel
-          # Haqiqiy mavjud faylni avtomatik qidirish sxemasi
           CONF_FILE=$(find arch/arm64/configs/ -name "*taoyao*" -o -name "*sm7325*" -o -name "*gki*" | head -n 1)
           
           if [ -n "$CONF_FILE" ]; then
@@ -44,7 +48,7 @@ jobs:
             echo "Topilgan konfiguratsiya fayli: $TARGET_CONF"
             make ARCH=arm64 O=out "$TARGET_CONF"
           else
-            echo "Mos keladigan defconfig topilmadi! Standart gki_defconfig ishlatiladi."
+            echo "Standart defconfig tanlanmoqda..."
             make ARCH=arm64 O=out gki_defconfig
           fi
           
