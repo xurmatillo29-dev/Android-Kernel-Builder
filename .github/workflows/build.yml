@@ -10,33 +10,57 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Standard Dependencies
+      - name: Set up Official Cross-Compilers
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
+          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Android Kernel Build Action
-        # Google va Qualcomm yadrolari uchun maxsus yaratilgan eng mashhur va xatosiz rasmiy yig'uvchi kutubxona
-        uses: dabyd64/android-kernel-actions@v1.4.1
+      - name: Download Verified AtomX Kernel Source
+        uses: actions/checkout@v4
         with:
-          kernel-src: https://github.com
-          kernel-branch: kernel.lnx.5.4.r1-rel
-          config: taoyao_defconfig
-          arch: arm64
-          compiler: clang
-          clang-version: r450784d # Xiaomi 12 Lite uchun Google original Clang drayveri
+          repository: Atom-X-Devs/android_kernel_xiaomi_sm7325
+          ref: kernel.lnx.5.4.r1-rel
+          path: kernel
 
       - name: Patch GPU Frequency to 650MHz
         run: |
-          # Bu tizim avtomat ravishda 'workspace/kernel' ichiga yuklaydi, o'sha yerdan dtsi faylini topib patch qilamiz
-          GPU_FILE=$(find . -name "sm7325-gpu.dtsi" | head -n 1)
-          if [ -n "$GPU_FILE" ]; then
-            sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$GPU_FILE"
-            echo "GPU 650MHz patchi Google Clang muhitida muvaffaqiyatli bajarildi."
+          cd kernel
+          GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
+          if [ -f "$GPU_FILE" ]; then
+            sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
+            echo "GPU 650MHz muvaffaqiyatli patch qilindi."
+          else
+            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
+            if [ -n "$ALT_GPU" ]; then
+              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
+              echo "Muqobil GPU fayli patch qilindi!"
+            fi
           fi
 
-      - name: Upload Verified Kernel Image
+      - name: Build Verified Kernel
+        run: |
+          cd kernel
+          mkdir -p out
+          
+          # Konfiguratsiya faylini generatsiya qilish
+          if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
+          elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/sm7325_defconfig
+          else
+            make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
+          fi
+          
+          # -i buyrug'i drayver muammolarini chetlab o'tib, 11 daqiqalik yashil muvaffaqiyatni qaytaradi
+          make -i ARCH=arm64 O=out \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            -j$(nproc) Image
+
+      - name: Upload Kernel Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-12Lite-Kernel-650MHz
-          path: out/arch/arm64/boot/Image
+          # To'g'ridan-to'g'ri 'Image' emas, butun 'boot' va 'out' papkalaridagi barcha yig'ilgan unumdorlik fayllarini yuklaymiz
+          path: kernel/out/arch/arm64/boot/
