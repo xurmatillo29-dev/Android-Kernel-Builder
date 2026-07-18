@@ -13,16 +13,19 @@ jobs:
       - name: Set up Clang and LLVM Toolchain
         run: |
           sudo apt-get update
-          # Kompilyatsiya uchun barcha zaruriy paketlarni to'liq yuklaymiz
+          # Kompilyatsiya uchun barcha zaruriy paketlarni va kerakli LLVM versiyasini to'liq yuklaymiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex git
           
-          # GitHub Actions serveridagi versiyali LLVM durlarini tizim durlariga (PATH) qat'iy bog'laymiz
-          # Bu o'sha vdso drayverlaridagi 'llvm-objdump: not found' xatosini tubdan yo'q qiladi
+          # Tizimdagi LLVM-ning aniq versiya papkasini topamiz va uni global PATH yo'liga qo'shamiz
+          # Bu o'sha 'llvm-objdump: not found' va 'llvm-nm: not found' xatolarini arxitektura darajasida yo'qotadi
+          LLVM_PATH=$(dirname $(which clang))
+          echo "$LLVM_PATH" >> $GITHUB_PATH
+          
+          # Qo'shimcha ravishda versiyali prefikslarni standart nomlarga ulaymiz
           CLANG_VER=$(clang --version | head -n 1 | awk '{print $3}' | cut -d. -f1)
-          sudo ln -sf /usr/bin/llvm-objcopy-${CLANG_VER} /usr/bin/llvm-objcopy || sudo ln -sf /usr/bin/llvm-objcopy /usr/bin/llvm-objcopy
-          sudo ln -sf /usr/bin/llvm-objdump-${CLANG_VER} /usr/bin/llvm-objdump || sudo ln -sf /usr/bin/llvm-objdump /usr/bin/llvm-objdump
-          sudo ln -sf /usr/bin/llvm-nm-${CLANG_VER} /usr/bin/llvm-nm || sudo ln -sf /usr/bin/llvm-nm /usr/bin/llvm-nm
-          sudo ln -sf /usr/bin/llvm-strip-${CLANG_VER} /usr/bin/llvm-strip || sudo ln -sf /usr/bin/llvm-strip /usr/bin/llvm-strip
+          if [ -d "/usr/lib/llvm-${CLANG_VER}/bin" ]; then
+            echo "/usr/lib/llvm-${CLANG_VER}/bin" >> $GITHUB_PATH
+          fi
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
