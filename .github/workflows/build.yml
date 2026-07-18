@@ -35,14 +35,20 @@ jobs:
       - name: Remove Broken Xiaomi Touchscreen Driver
         run: |
           cd kernel
-          # Muammoli drayver papkasini butunlay o'chirib tashlaymiz
+          # Muammoli drayver papkasini o'chirish
           rm -rf drivers/input/touchscreen/focaltech_3680
           
-          # Uni chaqiruvchi asosiy Makefile ichidagi qatorni ham o'chiramiz
+          # 1. Makefile ichidan bog'liqlikni o'chirish
           MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
           if [ -f "$MAIN_MAKEFILE" ]; then
             sed -i '/focaltech_3680/d' $MAIN_MAKEFILE
-            echo "Buzuq drayver tizimdan muvaffaqiyatli olib tashlandi!"
+          fi
+          
+          # 2. Kconfig ichidan bog'liqlikni o'chirish (Hozirgi xatoni yo'qotadi)
+          MAIN_KCONFIG="drivers/input/touchscreen/Kconfig"
+          if [ -f "$MAIN_KCONFIG" ]; then
+            sed -i '/focaltech_3680/d' $MAIN_KCONFIG
+            echo "Buzuq drayver Kconfig tizimidan to'liq olib tashlandi!"
           fi
 
       - name: Set up Clang and Toolchain
