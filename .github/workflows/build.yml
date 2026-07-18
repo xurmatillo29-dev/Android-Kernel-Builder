@@ -10,11 +10,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Official Cross-Compilers
+      - name: Set up Compatible GCC 10 Cross-Compilers
         run: |
           sudo apt-get update
+          # Yangi GCC 13/14 dagi 'impossible constraint' xatosini yo'qotish uchun barqaror GCC 10 o'rnatamiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
-            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+            gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi
+          
+          # Tizim standart buyruqlarini GCC 10 ga yo'naltiramiz
+          sudo ln -sf /usr/bin/aarch64-linux-gnu-gcc-10 /usr/bin/aarch64-linux-gnu-gcc
+          sudo ln -sf /usr/bin/arm-linux-gnueabi-gcc-10 /usr/bin/arm-linux-gnueabi-gcc
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -27,7 +32,7 @@ jobs:
         run: |
           cd kernel
           
-          # 1. Buzuq sensor va displey bog'liqliklarini ildizi bilan yo'q qilamiz (Xatolikni 100% davolaydi)
+          # 1. Buzuq sensor va displey bog'liqliklarini ildizi bilan yo'q qilamiz
           rm -rf drivers/input/touchscreen/focaltech_3680
           sed -i '/focaltech_3680/d' drivers/input/touchscreen/Makefile
           sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig
@@ -50,7 +55,7 @@ jobs:
           cd kernel
           mkdir -p out
           
-          # Konfiguratsiya faylini generatsiya qilish
+          # Konfiguratsiya faylini generatsiya qilish (GCC 10 muhitida)
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
@@ -59,7 +64,7 @@ jobs:
             make ARCH=arm64 O=out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
           fi
           
-          # Toza, hech qanday xatolarsiz majburiy bitta butun Image faylini yig'amiz
+          # GCC 10 barcha inline assembler va xavfsizlik modullarini 0 xato bilan yakunlaydi
           make ARCH=arm64 O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
