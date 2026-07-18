@@ -13,7 +13,6 @@ jobs:
       - name: Set up Standard Dependencies and Cross-Compilers
         run: |
           sudo apt-get update
-          # Yadro va barcha GNU Linker asboblari uchun kerakli kross-kompilyatorlarni to'liq o'rnatamiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4 \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
@@ -52,16 +51,17 @@ jobs:
           
           # Konfiguratsiya faylini aniqlash va generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- gki_defconfig
+            make ARCH=arm64 O=out CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- gki_defconfig
           fi
           
-          # Kompilyatsiyani boshlash (Barcha kross-linkers muammosiz ishlaydi)
+          # Yakuniy marra buyrug'i: CLANG_TRIPLE ulanishi vdso va yakuniy link xatolarini yo'qotadi
           make ARCH=arm64 O=out \
             CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
             -j$(nproc)
