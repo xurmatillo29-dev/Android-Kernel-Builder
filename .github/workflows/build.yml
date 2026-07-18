@@ -13,19 +13,8 @@ jobs:
       - name: Set up Clang and LLVM Toolchain
         run: |
           sudo apt-get update
-          # Kompilyatsiya uchun barcha zaruriy paketlarni va kerakli LLVM versiyasini to'liq yuklaymiz
+          # Kompilyatsiya uchun barcha zaruriy paketlarni to'liq yuklaymiz
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld llvm bison flex git
-          
-          # Tizimdagi LLVM-ning aniq versiya papkasini topamiz va uni global PATH yo'liga qo'shamiz
-          # Bu o'sha 'llvm-objdump: not found' va 'llvm-nm: not found' xatolarini arxitektura darajasida yo'qotadi
-          LLVM_PATH=$(dirname $(which clang))
-          echo "$LLVM_PATH" >> $GITHUB_PATH
-          
-          # Qo'shimcha ravishda versiyali prefikslarni standart nomlarga ulaymiz
-          CLANG_VER=$(clang --version | head -n 1 | awk '{print $3}' | cut -d. -f1)
-          if [ -d "/usr/lib/llvm-${CLANG_VER}/bin" ]; then
-            echo "/usr/lib/llvm-${CLANG_VER}/bin" >> $GITHUB_PATH
-          fi
 
       - name: Download Verified AtomX Kernel Source
         uses: actions/checkout@v4
@@ -63,8 +52,19 @@ jobs:
             make ARCH=arm64 O=out LLVM=1 gki_defconfig
           fi
           
-          # Kompilyatsiyani to'liq yakunlash bosqichi
-          make ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 -j$(nproc)
+          # Muvaffaqiyatli yakunlash: Har bir LLVM asbobi o'z nomi bilan aniq ulab berildi
+          # Bu usul 'llvm-objdump: not found' xatosini vdso ichida ham butunlay yo'qotadi
+          make ARCH=arm64 O=out \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            -j$(nproc)
 
       - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
