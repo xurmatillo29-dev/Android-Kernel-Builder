@@ -17,61 +17,54 @@ jobs:
           ref: taoyao-s-oss
           path: kernel
 
-      - name: Patch GPU Frequency to 650MHz
-        run: |
-          cd kernel
-          GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
-          if [ -f "$GPU_FILE" ]; then
-            sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
-            echo "GPU 650MHz patchi muvaffaqiyatli bajarildi."
-          else
-            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
-            if [ -n "$ALT_GPU" ]; then
-              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
-              echo "Muqobil fayl patch qilindi: $ALT_GPU"
-            fi
-          fi
-
-      - name: Remove Broken Xiaomi Touchscreen Driver
-        run: |
-          cd kernel
-          # Muammoli drayver papkasini o'chirish
-          rm -rf drivers/input/touchscreen/focaltech_3680
-          
-          # 1. Makefile ichidan bog'liqlikni o'chirish
-          MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
-          if [ -f "$MAIN_MAKEFILE" ]; then
-            sed -i '/focaltech_3680/d' $MAIN_MAKEFILE
-          fi
-          
-          # 2. Kconfig ichidan bog'liqlikni o'chirish (Hozirgi xatoni yo'qotadi)
-          MAIN_KCONFIG="drivers/input/touchscreen/Kconfig"
-          if [ -f "$MAIN_KCONFIG" ]; then
-            sed -i '/focaltech_3680/d' $MAIN_KCONFIG
-            echo "Buzuq drayver Kconfig tizimidan to'liq olib tashlandi!"
-          fi
-
       - name: Set up Clang and Toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex
 
+      - name: Clean and Patch Source
+        run: |
+          cd kernel
+          # 1. Dastlab xom manba kodini to'liq tozalab olamiz (Kirlanish muammosini yo'qotadi)
+          make ARCH=arm64 mrproper
+          
+          # 2. Endi buzuq sensor drayverini va uning bog'liqliklarini o'chiramiz
+          rm -rf drivers/input/touchscreen/focaltech_3680
+          
+          MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
+          if [ -f "$MAIN_MAKEFILE" ]; then
+            sed -i '/focaltech_3680/d' $MAIN_MAKEFILE
+          fi
+          
+          MAIN_KCONFIG="drivers/input/touchscreen/Kconfig"
+          if [ -f "$MAIN_KCONFIG" ]; then
+            sed -i '/focaltech_3680/d' $MAIN_KCONFIG
+          fi
+          
+          # 3. GPU chastotasini 650MHz ga patch qilamiz
+          GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
+          if [ -f "$GPU_FILE" ]; then
+            sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
+          else
+            ALT_GPU=$(find . -name "*gpu*.dtsi" | head -n 1)
+            if [ -n "$ALT_GPU" ]; then
+              sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
+            fi
+          fi
+          echo "Barcha tozalash va patchlash amallari muvaffaqiyatli yakunlandi!"
+
       - name: Find Defconfig and Build
         run: |
           cd kernel
-          
-          # 1-bosqich: Dastlab manba kodini tozalaymiz
-          make ARCH=arm64 mrproper
-          
-          # 2-bosqich: Asosiy GKI bazasini yaratamiz
+          # 1-bosqich: Asosiy GKI bazasini yaratamiz
           make ARCH=arm64 O=out gki_defconfig
           
-          # 3-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
+          # 2-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
           if [ -f "arch/arm64/configs/vendor/taoyao_QGKI.config" ]; then
             ARCH=arm64 O=out ./scripts/kconfig/merge_config.sh out/.config arch/arm64/configs/vendor/taoyao_QGKI.config
           fi
           
-          # 4-bosqich: Yadro tasvirini to'liq kompilyatsiya qilish
+          # 3-bosqich: Yadro tasvirini to'liq kompilyatsiya qilish
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
