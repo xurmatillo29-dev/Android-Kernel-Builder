@@ -40,15 +40,19 @@ jobs:
       - name: Find Defconfig and Build
         run: |
           cd kernel
-          # 1-bosqich: Dastlab asosiy GKI (Google) bazasini yaratamiz
+          
+          # Manba kodini kirlanishdan tozalash (Xatolikni yo'qotadi)
+          make ARCH=arm64 mrproper
+          
+          # 1-bosqich: Dastlab asosiy GKI bazasini yaratamiz
           make ARCH=arm64 O=out gki_defconfig
           
-          # 2-bosqich: Topilgan Xiaomi taoyao konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
+          # 2-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
           if [ -f "arch/arm64/configs/vendor/taoyao_QGKI.config" ]; then
             ARCH=arm64 O=out ./scripts/kconfig/merge_config.sh out/.config arch/arm64/configs/vendor/taoyao_QGKI.config
           fi
           
-          # 3-bosqich: Yadro tasvirini (Image) to'liq kompilyatsiya qilish
+          # 3-bosqich: Yadro tasvirini kompilyatsiya qilish
           make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
