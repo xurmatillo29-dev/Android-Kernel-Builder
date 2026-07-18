@@ -12,7 +12,6 @@ jobs:
 
       - name: Download Kernel Source
         run: |
-          # Git clone muammolarini chetlab o'tish uchun tar formatida tezkor yuklab olish
           mkdir kernel
           curl -L https://github.com | tar -xz -C kernel --strip-components=1
 
@@ -31,12 +30,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential libssl-dev libelf-dev clang lld bison flex
+          # Zamonaviy kerneellar uchun LLVM muhitini global sozlash
+          sudo ln -sf /usr/bin/clang /usr/bin/clang-14
 
       - name: Build Kernel Image
         run: |
           cd kernel
-          make ARCH=arm64 O=out taoyao_defconfig
-          make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 -j$(nproc)
+          # Agar defconfig fayli topilmasa, mos keladiganini avtomatik qidiradi
+          if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
+            make ARCH=arm64 O=out vendor/taoyao_defconfig
+          elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
+            make ARCH=arm64 O=out vendor/sm7325_defconfig
+          elif [ -f "arch/arm64/configs/taoyao_defconfig" ]; then
+            make ARCH=arm64 O=out taoyao_defconfig
+          else
+            make ARCH=arm64 O=out sm7325_defconfig
+          fi
+          
+          # Kompilyatsiyani boshlash
+          make ARCH=arm64 O=out CC=clang LD=ld.lld LLVM=1 LLVM_IAS=1 -j$(nproc)
 
       - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
