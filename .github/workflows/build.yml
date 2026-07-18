@@ -25,10 +25,8 @@ jobs:
       - name: Clean and Patch Source
         run: |
           cd kernel
-          # 1. Dastlab xom manba kodini to'liq tozalab olamiz (Kirlanish muammosini yo'qotadi)
-          make ARCH=arm64 mrproper
           
-          # 2. Endi buzuq sensor drayverini va uning bog'liqliklarini o'chiramiz
+          # 1. Buzuq sensor drayverini butunlay yo'q qilamiz (Tozalashdan oldin!)
           rm -rf drivers/input/touchscreen/focaltech_3680
           
           MAIN_MAKEFILE="drivers/input/touchscreen/Makefile"
@@ -41,7 +39,7 @@ jobs:
             sed -i '/focaltech_3680/d' $MAIN_KCONFIG
           fi
           
-          # 3. GPU chastotasini 650MHz ga patch qilamiz
+          # 2. GPU chastotasini 650MHz ga patch qilamiz
           GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
           if [ -f "$GPU_FILE" ]; then
             sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
@@ -51,12 +49,14 @@ jobs:
               sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' "$ALT_GPU"
             fi
           fi
-          echo "Barcha tozalash va patchlash amallari muvaffaqiyatli yakunlandi!"
+          echo "Patchlash amallari yakunlandi!"
 
       - name: Find Defconfig and Build
         run: |
           cd kernel
-          # 1-bosqich: Asosiy GKI bazasini yaratamiz
+          # 1-bosqich: Dastlab standart defconfig orqali xavfsiz .config yaratamiz
+          # mrproper buyrug'isiz kirlanish xatosini chetlab o'tish uchun to'g'ridan-to'g'ri out ichida yig'amiz
+          mkdir -p out
           make ARCH=arm64 O=out gki_defconfig
           
           # 2-bosqich: Xiaomi konfiguratsiyasini baza ustiga birlashtiramiz (Merge)
