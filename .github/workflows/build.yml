@@ -50,15 +50,20 @@ jobs:
           
           # Konfiguratsiya faylini aniqlash va generatsiya qilish
           if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/taoyao_defconfig
+            make ARCH=arm64 O=out CC=clang vendor/taoyao_defconfig
           elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out LLVM=1 vendor/sm7325_defconfig
+            make ARCH=arm64 O=out CC=clang vendor/sm7325_defconfig
           else
-            make ARCH=arm64 O=out LLVM=1 gki_defconfig
+            make ARCH=arm64 O=out CC=clang gki_defconfig
           fi
           
-          # Kompilyatsiyani to'liq yakunlash bosqichi (Rasmiy LLVM vositalari yordamida)
-          make ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 -j$(nproc)
+          # G'alaba bosqichi: Global LLVM=1 o'rniga faqat CC=clang qo'llaniladi
+          # Bu usul vdso va fs bo'limlaridagi assembler xatolarini butunlay yo'qotadi
+          make ARCH=arm64 O=out \
+            CC=clang \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+            -j$(nproc)
 
       - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
