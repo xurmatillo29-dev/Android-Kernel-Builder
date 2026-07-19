@@ -19,10 +19,11 @@ jobs:
         sudo apt update
         sudo apt install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-    - name: Download Kernel Source & Clang
+    -     - name: Download Kernel Source & Clang
       run: |
-        git clone https://github.com -b 14.0 --depth=1 android_kernel
+        git clone https://github.com --branch 14.0 --depth=1 android_kernel
         git clone https://googlesource.com --depth=1 clang-aosp
+
 
     - name: Setup KernelSU & GPU 650MHz Patch
       run: |
