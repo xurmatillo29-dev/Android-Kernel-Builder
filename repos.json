@@ -1,8 +1,9 @@
 [
   {
-    "kernel_source": "https://github.com",
-    "kernel_branch": "lineage-21",
-    "kernel_defconfig": "taoyao_defconfig",
+    "kernel_url": "https://github.com",
+    "kernel_branch": "14.0",
+    "config": "vendor/sm7325_defconfig",
+    "arch": "arm64",
     "compiler": "clang",
     "clang_version": "r487747c",
     "anykernel3": true
