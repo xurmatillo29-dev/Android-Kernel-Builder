@@ -11,7 +11,7 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout Repository
+    - name: Checkout Builder
       uses: actions/checkout@v4
 
     - name: Setup Build Environment
@@ -19,15 +19,20 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-    - name: Download Tools & Clang
-      run: |
-        # Havolalarni kesilib ketishidan himoya qilish uchun ularni bo'laklab birlashtiramiz
-        PART1="https://github.com"
-        PART2="android/android_kernel_xiaomi_sm7325.git"
-        CLANG_URL="https://googlesource.com"
-        
-        git clone "${PART1}${PART2}" --branch 14.0 --depth=1 android_kernel
-        git clone "${CLANG_URL}" --depth=1 clang-aosp
+    - name: Download Kernel Source via Action
+      uses: actions/checkout@v4
+      with:
+        repository: crdroidandroid/android_kernel_xiaomi_sm7325
+        ref: 14.0
+        path: android_kernel
+
+    - name: Download Clang Compiler via Action
+      uses: actions/checkout@v4
+      with:
+        repository: google/platform-prebuilts-clang-host-linux-x86
+        path: clang-aosp
+        sparse-checkout: |
+          clang-r487747c
 
     - name: Setup KernelSU & GPU 650MHz Patch
       run: |
