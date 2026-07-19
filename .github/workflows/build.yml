@@ -19,12 +19,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-    - name: Download Kernel Source & Clang
+    - name: Download Tools & Clang
       run: |
-        URL_KERNEL="https://github.com"
-        URL_CLANG="https://googlesource.com"
-        git clone $URL_KERNEL --branch 14.0 --depth=1 android_kernel
-        git clone $URL_CLANG --depth=1 clang-aosp
+        # Havolalarni kesilib ketishidan himoya qilish uchun ularni bo'laklab birlashtiramiz
+        PART1="https://github.com"
+        PART2="android/android_kernel_xiaomi_sm7325.git"
+        CLANG_URL="https://googlesource.com"
+        
+        git clone "${PART1}${PART2}" --branch 14.0 --depth=1 android_kernel
+        git clone "${CLANG_URL}" --depth=1 clang-aosp
 
     - name: Setup KernelSU & GPU 650MHz Patch
       run: |
@@ -57,4 +60,3 @@ jobs:
       with:
         name: Xiaomi12Lite-crDroid-Kernel
         path: Xiaomi12Lite-crDroid-650MHz-KernelSU.zip
-
