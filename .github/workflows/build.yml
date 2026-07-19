@@ -1,85 +1,63 @@
-name: Build Android Kernel
+name: Xiaomi 12 Lite GPU Overclock & KernelSU Build
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Cloud Kernel Compiling
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Set up Standard Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bc build-essential libssl-dev libelf-dev bison flex git lz4
+    - name: Setup Build Environment
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-      - name: Download Official Google AOSP GCC Toolchain
-        run: |
-          # Yangi GCC versiyalaridagi barcha assembler (asm) xatolarini chetlab o'tish uchun Google original kompilyatorini yuklaymiz
-          git clone https://googlesource.com --depth=1 gcc-aarch64
-          git clone https://googlesource.com --depth=1 gcc-arm
-          
-          # Manzillarni global tizim o'zgaruvchisiga (Env) joylaymiz
-          echo "GCC_AARCH64_PREFIX=$(pwd)/gcc-aarch64/bin/aarch64-linux-android-" >> $GITHUB_ENV
-          echo "GCC_ARM_PREFIX=$(pwd)/gcc-arm/bin/arm-linux-androideabi-" >> $GITHUB_ENV
+    - name: Download Kernel Source & Clang
+      run: |
+        git clone https://github.com -b 14.0 --depth=1 android_kernel
+        git clone https://googlesource.com --depth=1 clang-aosp
 
-      - name: Download Verified AtomX Kernel Source
-        uses: actions/checkout@v4
-        with:
-          repository: Atom-X-Devs/android_kernel_xiaomi_sm7325
-          ref: kernel.lnx.5.4.r1-rel
-          path: kernel
+    - name: Setup KernelSU & GPU 650MHz Patch
+      run: |
+        cd android_kernel
+        
+        # 1. KernelSU (Root) integratsiyasi
+        curl -LSs "https://githubusercontent.com" | bash -s main
+        
+        # 2. Avtomatik GPU 650MHz Patch
+        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <550000000>/qcom,gpu-freq = <650000000>/g' {} +
+        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <490000000>/qcom,gpu-freq = <650000000>/g' {} +
+        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <560000000>/qcom,gpu-freq = <650000000>/g' {} +
 
-      - name: Patch GPU Frequency and Fix Techpack Error
-        run: |
-          cd kernel
-          
-          # 1. Buzuq sensor va displey drayverlarini butunlay o'chiramiz
-          rm -rf drivers/input/touchscreen/focaltech_3680
-          sed -i '/focaltech_3680/d' drivers/input/touchscreen/Makefile
-          sed -i '/focaltech_3680/d' drivers/input/touchscreen/Kconfig
-          
-          # 2. Xato bergan techpack displey drayverini zanjirdan uzamiz
-          if [ -f "Makefile" ]; then
-            sed -i 's/obj-y += techpack\/display\///g' Makefile || true
-            sed -i '/techpack\/display/d' Makefile || true
-          fi
+    - name: Compile Kernel
+      run: |
+        cd android_kernel
+        export PATH="$GITHUB_WORKSPACE/clang-aosp/clang-r487747c/bin:$PATH"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang
+        
+        # Konfiguratsiyani yuklash va yig'ish
+        make vendor/sm7325_defconfig
+        make -j$(nproc)
 
-          # 3. GPU chastotasini 650MHz ga patch qilamiz
-          GPU_FILE="arch/arm64/boot/dts/vendor/qcom/sm7325-gpu.dtsi"
-          if [ -f "$GPU_FILE" ]; then
-            sed -i 's/qcom,gpu-pwrlevel@0 {/qcom,gpu-pwrlevel@0 {\n\t\t\treg = <0>;\n\t\t\tqcom,gpu-freq = <650000000>;/g' $GPU_FILE
-            echo "GPU 650MHz muvaffaqiyatli patch qilindi."
-          fi
+    - name: Package with AnyKernel3
+      run: |
+        git clone https://github.com AnyKernel3
+        cp android_kernel/arch/arm64/boot/Image.gz AnyKernel3/
+        cd AnyKernel3
+        zip -r ../Xiaomi12Lite-crDroid-650MHz-KernelSU.zip *
 
-      - name: Build Verified Kernel
-        run: |
-          cd kernel
-          mkdir -p out
-          
-          # Google AOSP original drayver durlarini yuklaymiz
-          CROSS_A64=${{ env.GCC_AARCH64_PREFIX }}
-          CROSS_A32=${{ env.GCC_ARM_PREFIX }}
-          
-          # Konfiguratsiya faylini generatsiya qilish (Google GCC 4.9 yordamida)
-          if [ -f "arch/arm64/configs/vendor/taoyao_defconfig" ]; then
-            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} vendor/taoyao_defconfig
-          elif [ -f "arch/arm64/configs/vendor/sm7325_defconfig" ]; then
-            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} vendor/sm7325_defconfig
-          else
-            make ARCH=arm64 O=out CROSS_COMPILE=${CROSS_A64} CROSS_COMPILE_COMPAT=${CROSS_A32} gki_defconfig
-          fi
-          
-          # Google original kross-kompilyatori vdso va crypto ichidagi barcha assembler to'siqlarini 0 xato bilan yakunlaydi
-          make ARCH=arm64 O=out \
-            CROSS_COMPILE=${CROSS_A64} \
-            CROSS_COMPILE_COMPAT=${CROSS_A32} \
-            -j$(nproc) Image
-
-      - name: Upload Kernel Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Xiaomi-12Lite-Kernel-650MHz
-          path: kernel/out/arch/arm64/boot/Image
+    - name: Upload Finished Kernel
+      uses: actions/upload-artifact@v4
+      with:
+        name: Xiaomi12Lite-crDroid-Kernel
+        path: Xiaomi12Lite-crDroid-650MHz-KernelSU.zip
