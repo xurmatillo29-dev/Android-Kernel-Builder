@@ -16,23 +16,20 @@ jobs:
 
     - name: Setup Build Environment
       run: |
-        sudo apt update
-        sudo apt install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-    -     - name: Download Kernel Source & Clang
+    - name: Download Kernel Source & Clang
       run: |
-        git clone https://github.com --branch 14.0 --depth=1 android_kernel
-        git clone https://googlesource.com --depth=1 clang-aosp
-
+        URL_KERNEL="https://github.com"
+        URL_CLANG="https://googlesource.com"
+        git clone $URL_KERNEL --branch 14.0 --depth=1 android_kernel
+        git clone $URL_CLANG --depth=1 clang-aosp
 
     - name: Setup KernelSU & GPU 650MHz Patch
       run: |
         cd android_kernel
-        
-        # 1. KernelSU (Root) integratsiyasi
         curl -LSs "https://githubusercontent.com" | bash -s main
-        
-        # 2. Avtomatik GPU 650MHz Patch
         find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <550000000>/qcom,gpu-freq = <650000000>/g' {} +
         find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <490000000>/qcom,gpu-freq = <650000000>/g' {} +
         find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <560000000>/qcom,gpu-freq = <650000000>/g' {} +
@@ -45,8 +42,6 @@ jobs:
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
         export CC=clang
-        
-        # Konfiguratsiyani yuklash va yig'ish
         make vendor/sm7325_defconfig
         make -j$(nproc)
 
@@ -62,3 +57,4 @@ jobs:
       with:
         name: Xiaomi12Lite-crDroid-Kernel
         path: Xiaomi12Lite-crDroid-650MHz-KernelSU.zip
+
