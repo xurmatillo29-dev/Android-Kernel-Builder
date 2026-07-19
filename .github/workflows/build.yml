@@ -3,6 +3,10 @@ name: Xiaomi 12 Lite GPU Overclock & KernelSU Build
 on:
   workflow_dispatch:
 
+env:
+  KERNEL_REPO: "https://github.com"
+  CLANG_REPO: "https://googlesource.com"
+
 jobs:
   build:
     name: Cloud Kernel Compiling
@@ -19,20 +23,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
 
-    - name: Download Kernel Source via Action
-      uses: actions/checkout@v4
-      with:
-        repository: crdroidandroid/android_kernel_xiaomi_sm7325
-        ref: 14.0
-        path: android_kernel
-
-    - name: Download Clang Compiler via Action
-      uses: actions/checkout@v4
-      with:
-        repository: google/platform-prebuilts-clang-host-linux-x86
-        path: clang-aosp
-        sparse-checkout: |
-          clang-r487747c
+    - name: Download Kernel Source & Clang Toolchain
+      run: |
+        git clone ${{ env.KERNEL_REPO }} --branch lineage-21 --depth=1 android_kernel
+        git clone ${{ env.CLANG_REPO }} --depth=1 clang-aosp
 
     - name: Setup KernelSU & GPU 650MHz Patch
       run: |
