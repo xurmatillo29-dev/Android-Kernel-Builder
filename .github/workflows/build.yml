@@ -1,7 +1,7 @@
 name: PhantomK12 NetHunter Kernel Builder
 
 on:
-  workflow_dispatch: # Qo'lda ishga tushirish uchun
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          echo "KERNEL_SRC=https://github.com" >> $GITHUB_ENV
+          echo "KERNEL_SRC=https://github.com/LineageOS/android_kernel_xiaomi_sm8350" >> $GITHUB_ENV
           echo "KERNEL_BRANCH=lineage-21" >> $GITHUB_ENV
           echo "DEFCONFIG=taoyao_defconfig" >> $GITHUB_ENV
 
@@ -22,15 +22,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git cpio flex bison libelf-dev lz4 tar zip python3
 
-       - name: Download Google AOSP Clang
+      - name: Download Google AOSP Clang
         run: |
           mkdir -p $GITHUB_WORKSPACE/clang
           cd $GITHUB_WORKSPACE/clang
-          # Android 14 LineageOS uchun barqaror va ochiq AOSP Clang to‘g‘ridan-to‘g‘ri havolasi
+          # TO'G'RILANGAN TO'G'RIDAN-TO'G'RI ARXIV HAVOLASI
           wget https://googlesource.com
           tar -xf clang-r522817.tar.gz
           echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
-
 
       - name: Fetch Kernel Source
         run: |
@@ -39,7 +38,6 @@ jobs:
       - name: Apply Kali NetHunter Patches
         run: |
           cd $GITHUB_WORKSPACE/source
-          # NetHunter-ning rasmiy yadro patcher drayverlarini yuklash va o'rnatish
           git clone --depth=1 https://gitlab.com nh_patcher
           python3 nh_patcher/patches/patch.py -k . -a arm64
 
@@ -49,7 +47,7 @@ jobs:
           export ARCH=arm64
           make ${{ env.DEFCONFIG }}
           
-          # Phantom-skript uslubida NetHunter drayverlarini majburan konfiguratsiyaga yozish
+          # NetHunter drayverlarini va RT5370 chipini majburan yoqish
           ./scripts/config --enable CONFIG_MAC80211
           ./scripts/config --enable CONFIG_CFG80211
           ./scripts/config --enable CONFIG_RT2X00
