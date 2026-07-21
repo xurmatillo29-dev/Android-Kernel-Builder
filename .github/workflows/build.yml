@@ -13,7 +13,7 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          echo "KERNEL_SRC=https://github.com/LineageOS/android_kernel_xiaomi_sm8350" >> $GITHUB_ENV
+          echo "KERNEL_SRC=https://github.com" >> $GITHUB_ENV
           echo "KERNEL_BRANCH=lineage-21" >> $GITHUB_ENV
           echo "DEFCONFIG=taoyao_defconfig" >> $GITHUB_ENV
 
@@ -22,14 +22,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git cpio flex bison libelf-dev lz4 tar zip python3
 
-      - name: Download Google AOSP Clang
+      - name: Clone Google AOSP Clang (Fix Download Error)
         run: |
-          mkdir -p $GITHUB_WORKSPACE/clang
-          cd $GITHUB_WORKSPACE/clang
-          # TO'G'RILANGAN TO'G'RIDAN-TO'G'RI ARXIV HAVOLASI
-          wget https://googlesource.com
-          tar -xf clang-r522817.tar.gz
-          echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
+          # Git clone orqali arxivsiz, to'g'ridan-to'g'ri xatoliksiz yuklash
+          git clone --depth=1 -b master https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 $GITHUB_WORKSPACE/clang-repo
+          # Kerakli clang-r522817 versiyasini yo'lga kiritish
+          echo "$GITHUB_WORKSPACE/clang-repo/clang-r522817/bin" >> $GITHUB_PATH
 
       - name: Fetch Kernel Source
         run: |
