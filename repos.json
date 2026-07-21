@@ -1,11 +1,23 @@
 [
   {
-    "kernel_url": "https://github.com",
-    "kernel_branch": "14.0",
-    "config": "vendor/sm7325_defconfig",
-    "arch": "arm64",
+    "kernel_source": "https://github.com",
+    "kernel_branch": "lineage-21",
+    "kernel_defconfig": "taoyao_defconfig",
     "compiler": "clang",
-    "clang_version": "r487747c",
-    "anykernel3": true
+    "clang_version": "r522817",
+    "gcc_version": "13.0",
+    "anykernel3": true,
+    "device_name": "taoyao",
+    "nethunter_patch": true,
+    "extra_options": [
+      "CONFIG_MAC80211=y",
+      "CONFIG_CFG80211=y",
+      "CONFIG_RT2X00=y",
+      "CONFIG_RT2800USB=y",
+      "CONFIG_RT2800USB_RT53XX=y",
+      "CONFIG_USB_GADGET=y",
+      "CONFIG_USB_F_HID=y",
+      "CONFIG_USB_CONFIGFS_F_HID=y"
+    ]
   }
 ]
