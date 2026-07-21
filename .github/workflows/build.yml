@@ -22,13 +22,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git cpio flex bison libelf-dev lz4 tar zip python3
 
-      - name: Download Google AOSP Clang
+       - name: Download Google AOSP Clang
         run: |
           mkdir -p $GITHUB_WORKSPACE/clang
           cd $GITHUB_WORKSPACE/clang
+          # Android 14 LineageOS uchun barqaror va ochiq AOSP Clang to‘g‘ridan-to‘g‘ri havolasi
           wget https://googlesource.com
           tar -xf clang-r522817.tar.gz
           echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
+
 
       - name: Fetch Kernel Source
         run: |
