@@ -1,61 +1,84 @@
-name: Xiaomi 12 Lite GPU Overclock & KernelSU Build
+name: PhantomK12 NetHunter Kernel Builder
 
 on:
-  workflow_dispatch:
-
-env:
-  KERNEL_REPO: "https://github.com"
-  CLANG_REPO: "https://googlesource.com"
+  workflow_dispatch: # Qo'lda ishga tushirish uchun
 
 jobs:
   build:
-    name: Cloud Kernel Compiling
+    name: Compiling via Phantom-Core
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-
     steps:
-    - name: Checkout Builder
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Setup Build Environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf libelf-dev libncurses-dev libssl-dev libxml2-utils rsync schedtool squashfs-tools xsltproc zip zlib1g-dev lz4
+      - name: Set Environment Variables
+        run: |
+          echo "KERNEL_SRC=https://github.com" >> $GITHUB_ENV
+          echo "KERNEL_BRANCH=lineage-21" >> $GITHUB_ENV
+          echo "DEFCONFIG=taoyao_defconfig" >> $GITHUB_ENV
 
-    - name: Download Kernel Source & Clang Toolchain
-      run: |
-        git clone ${{ env.KERNEL_REPO }} --branch lineage-21 --depth=1 android_kernel
-        git clone ${{ env.CLANG_REPO }} --depth=1 clang-aosp
+      - name: Setup Build Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git cpio flex bison libelf-dev lz4 tar zip python3
 
-    - name: Setup KernelSU & GPU 650MHz Patch
-      run: |
-        cd android_kernel
-        curl -LSs "https://githubusercontent.com" | bash -s main
-        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <550000000>/qcom,gpu-freq = <650000000>/g' {} +
-        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <490000000>/qcom,gpu-freq = <650000000>/g' {} +
-        find . -name "*gpu*.dtsi" -exec sed -i 's/qcom,gpu-freq = <560000000>/qcom,gpu-freq = <650000000>/g' {} +
+      - name: Download Google AOSP Clang
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/clang
+          cd $GITHUB_WORKSPACE/clang
+          wget https://googlesource.com
+          tar -xf clang-r522817.tar.gz
+          echo "$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_PATH
 
-    - name: Compile Kernel
-      run: |
-        cd android_kernel
-        export PATH="$GITHUB_WORKSPACE/clang-aosp/clang-r487747c/bin:$PATH"
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CC=clang
-        make vendor/sm7325_defconfig
-        make -j$(nproc)
+      - name: Fetch Kernel Source
+        run: |
+          git clone --depth=1 -b ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_SRC }} $GITHUB_WORKSPACE/source
 
-    - name: Package with AnyKernel3
-      run: |
-        git clone https://github.com AnyKernel3
-        cp android_kernel/arch/arm64/boot/Image.gz AnyKernel3/
-        cd AnyKernel3
-        zip -r ../Xiaomi12Lite-crDroid-650MHz-KernelSU.zip *
+      - name: Apply Kali NetHunter Patches
+        run: |
+          cd $GITHUB_WORKSPACE/source
+          # NetHunter-ning rasmiy yadro patcher drayverlarini yuklash va o'rnatish
+          git clone --depth=1 https://gitlab.com nh_patcher
+          python3 nh_patcher/patches/patch.py -k . -a arm64
 
-    - name: Upload Finished Kernel
-      uses: actions/upload-artifact@v4
-      with:
-        name: Xiaomi12Lite-crDroid-Kernel
-        path: Xiaomi12Lite-crDroid-650MHz-KernelSU.zip
+      - name: Configure Defconfig (Enable Wi-Fi Skaner & HID)
+        run: |
+          cd $GITHUB_WORKSPACE/source
+          export ARCH=arm64
+          make ${{ env.DEFCONFIG }}
+          
+          # Phantom-skript uslubida NetHunter drayverlarini majburan konfiguratsiyaga yozish
+          ./scripts/config --enable CONFIG_MAC80211
+          ./scripts/config --enable CONFIG_CFG80211
+          ./scripts/config --enable CONFIG_RT2X00
+          ./scripts/config --enable CONFIG_RT2800USB
+          ./scripts/config --enable CONFIG_RT2800USB_RT53XX
+          ./scripts/config --enable CONFIG_USB_GADGET
+          ./scripts/config --enable CONFIG_USB_F_HID
+          ./scripts/config --enable CONFIG_USB_CONFIGFS_F_HID
+          
+          make savedefconfig
+
+      - name: Compile Kernel via Phantom-Engine
+        run: |
+          cd $GITHUB_WORKSPACE/source
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CC=clang
+          make -j$(nproc --all) Image.gz
+
+      - name: Package with AnyKernel3
+        run: |
+          cd $GITHUB_WORKSPACE
+          git clone --depth=1 https://github.com AnyKernel
+          cp source/arch/arm64/boot/Image.gz AnyKernel/
+          sed -i 's/device.name1=/device.name1=taoyao/g' AnyKernel/anykernel.sh
+          cd AnyKernel
+          zip -r ../Phantom-NetHunter-Taoyao.zip *
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhantomK12-NetHunter-Kernel
+          path: Phantom-NetHunter-Taoyao.zip
