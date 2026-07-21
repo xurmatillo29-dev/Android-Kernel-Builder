@@ -11,27 +11,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Environment Variables
-        run: |
-          echo "KERNEL_SRC=https://github.com" >> $GITHUB_ENV
-          echo "KERNEL_BRANCH=lineage-21" >> $GITHUB_ENV
-          echo "DEFCONFIG=taoyao_defconfig" >> $GITHUB_ENV
-
       - name: Setup Build Environment
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential libncurses5-dev libssl-dev xz-utils wget curl git cpio flex bison libelf-dev lz4 tar zip python3
 
-      - name: Clone Google AOSP Clang (Fix Download Error)
+      - name: Download Proton Clang (Fast & Error-Free)
         run: |
-          # Git clone orqali arxivsiz, to'g'ridan-to'g'ri xatoliksiz yuklash
-          git clone --depth=1 -b master https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 $GITHUB_WORKSPACE/clang-repo
-          # Kerakli clang-r522817 versiyasini yo'lga kiritish
-          echo "$GITHUB_WORKSPACE/clang-repo/clang-r522817/bin" >> $GITHUB_PATH
+          mkdir -p $GITHUB_WORKSPACE/clang
+          cd $GITHUB_WORKSPACE/clang
+          git clone --depth=1 https://github.com bin
+          echo "$GITHUB_WORKSPACE/clang/bin/bin" >> $GITHUB_PATH
 
-      - name: Fetch Kernel Source
+      - name: Fetch Kernel Source (Fixed Link)
         run: |
-          git clone --depth=1 -b ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_SRC }} $GITHUB_WORKSPACE/source
+          # Havola xatoligini oldini olish uchun jismoniy manzilni to'g'ridan-to'g'ri klon qilamiz
+          git clone --depth=1 -b lineage-21 https://github.com source
 
       - name: Apply Kali NetHunter Patches
         run: |
@@ -43,7 +38,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/source
           export ARCH=arm64
-          make ${{ env.DEFCONFIG }}
+          make taoyao_defconfig
           
           # NetHunter drayverlarini va RT5370 chipini majburan yoqish
           ./scripts/config --enable CONFIG_MAC80211
