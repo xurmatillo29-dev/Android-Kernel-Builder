@@ -18,20 +18,22 @@ jobs:
 
       - name: Download Proton Clang (Fast & Error-Free)
         run: |
-          # O'zgaruvchilarsiz, to'g'ridan-to'g'ri joriy papkaga klon qilamiz
-          git clone --depth=1 https://github.com clang-bin
-          # Clang kompilyatorini tizim yo'liga (PATH) qo'shish
+          # Havolani o'zgaruvchiga olib, satr sinishi xatoligini butunlay yo'q qilamiz
+          CLANG_URL="https://github.com"
+          git clone --depth=1 "$CLANG_URL" clang-bin
           echo "$GITHUB_WORKSPACE/clang-bin/bin" >> $GITHUB_PATH
 
       - name: Fetch Kernel Source
         run: |
-          # Yadro kodini ham oddiy toza havola orqali yuklaymiz
-          git clone --depth=1 -b lineage-21 https://github.com source
+          # Yadro manba kodini ham xavfsiz o'zgaruvchi orqali yuklaymiz
+          KERNEL_URL="https://github.com"
+          git clone --depth=1 -b lineage-21 "$KERNEL_URL" source
 
       - name: Apply Kali NetHunter Patches
         run: |
           cd source
-          git clone --depth=1 https://gitlab.com nh_patcher
+          PATCHER_URL="https://gitlab.com"
+          git clone --depth=1 "$PATCHER_URL" nh_patcher
           python3 nh_patcher/patches/patch.py -k . -a arm64
 
       - name: Configure Defconfig (Enable Wi-Fi Skaner & HID)
@@ -63,7 +65,8 @@ jobs:
 
       - name: Package with AnyKernel3
         run: |
-          git clone --depth=1 https://github.com AnyKernel
+          AK3_URL="https://github.com"
+          git clone --depth=1 "$AK3_URL" AnyKernel
           cp source/arch/arm64/boot/Image.gz AnyKernel/
           sed -i 's/device.name1=/device.name1=taoyao/g' AnyKernel/anykernel.sh
           cd AnyKernel
