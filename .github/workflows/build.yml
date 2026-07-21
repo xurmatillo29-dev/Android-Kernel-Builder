@@ -18,25 +18,25 @@ jobs:
 
       - name: Download Proton Clang (Fast & Error-Free)
         run: |
-          mkdir -p $GITHUB_WORKSPACE/clang
-          cd $GITHUB_WORKSPACE/clang
-          git clone --depth=1 https://github.com bin
-          echo "$GITHUB_WORKSPACE/clang/bin/bin" >> $GITHUB_PATH
+          # O'zgaruvchilarsiz, to'g'ridan-to'g'ri joriy papkaga klon qilamiz
+          git clone --depth=1 https://github.com clang-bin
+          # Clang kompilyatorini tizim yo'liga (PATH) qo'shish
+          echo "$GITHUB_WORKSPACE/clang-bin/bin" >> $GITHUB_PATH
 
-      - name: Fetch Kernel Source (Fixed Link)
+      - name: Fetch Kernel Source
         run: |
-          # Havola xatoligini oldini olish uchun jismoniy manzilni to'g'ridan-to'g'ri klon qilamiz
+          # Yadro kodini ham oddiy toza havola orqali yuklaymiz
           git clone --depth=1 -b lineage-21 https://github.com source
 
       - name: Apply Kali NetHunter Patches
         run: |
-          cd $GITHUB_WORKSPACE/source
+          cd source
           git clone --depth=1 https://gitlab.com nh_patcher
           python3 nh_patcher/patches/patch.py -k . -a arm64
 
       - name: Configure Defconfig (Enable Wi-Fi Skaner & HID)
         run: |
-          cd $GITHUB_WORKSPACE/source
+          cd source
           export ARCH=arm64
           make taoyao_defconfig
           
@@ -54,7 +54,7 @@ jobs:
 
       - name: Compile Kernel via Phantom-Engine
         run: |
-          cd $GITHUB_WORKSPACE/source
+          cd source
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -63,7 +63,6 @@ jobs:
 
       - name: Package with AnyKernel3
         run: |
-          cd $GITHUB_WORKSPACE
           git clone --depth=1 https://github.com AnyKernel
           cp source/arch/arm64/boot/Image.gz AnyKernel/
           sed -i 's/device.name1=/device.name1=taoyao/g' AnyKernel/anykernel.sh
